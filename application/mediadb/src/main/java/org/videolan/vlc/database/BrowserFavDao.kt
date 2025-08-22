@@ -21,32 +21,42 @@
 package org.videolan.vlc.database
 
 import android.net.Uri
-import androidx.lifecycle.LiveData
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 import org.videolan.vlc.mediadb.models.BrowserFav
 
 @Dao
 interface BrowserFavDao {
+
+    /** Insert or update a favorite item safely */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(browserFav: BrowserFav)
+    suspend fun insert(browserFav: BrowserFav)
 
-    @Query("SELECT * FROM fav_table where uri = :uri")
-    fun get(uri: Uri): List<BrowserFav>
+    /** Get a favorite by its URI, returns empty list if not found */
+    @Query("SELECT * FROM fav_table WHERE uri = :uri")
+    fun get(uri: Uri): Flow<List<BrowserFav>>
 
-    @Query("SELECT * from fav_table")
+    /** Get all favorites as a Flow for reactive updates */
+    @Query("SELECT * FROM fav_table")
     fun getAll(): Flow<List<BrowserFav>>
 
-    @Query("SELECT * from fav_table where type = 0")
+    /** Get all network favorites (type = 0) */
+    @Query("SELECT * FROM fav_table WHERE type = 0")
     fun getAllNetworkFavs(): Flow<List<BrowserFav>>
 
-    @Query("SELECT * from fav_table where type = 1")
-    fun getAllLocalFavs(): LiveData<List<BrowserFav>>
+    /** Get all local favorites (type = 1) */
+    @Query("SELECT * FROM fav_table WHERE type = 1")
+    fun getAllLocalFavs(): Flow<List<BrowserFav>>
 
-    @Query("DELETE from fav_table where uri = :uri")
-    fun delete(uri: Uri)
+    /** Delete a favorite by URI */
+    @Query("DELETE FROM fav_table WHERE uri = :uri")
+    suspend fun delete(uri: Uri)
 
+    /** Delete all favorites (optional utility) */
+    @Query("DELETE FROM fav_table")
+    suspend fun deleteAll()
+
+    /** Check if a favorite exists by URI */
+    @Query("SELECT EXISTS(SELECT 1 FROM fav_table WHERE uri = :uri)")
+    fun exists(uri: Uri): Flow<Boolean>
 }
